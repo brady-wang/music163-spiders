@@ -1,8 +1,8 @@
-# May 26 2018 Author: Zhiying Zhou
-import requests
-from bs4 import BeautifulSoup
-import csv
+from lxml import etree
+from time import sleep
 
+import csv
+import requests
 
 # 构造函数获取歌手信息
 def get_artists(url):
@@ -22,27 +22,31 @@ def get_artists(url):
              'Upgrade-Insecure-Requests': '1',
              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
                            'Chrome/66.0.3359.181 Safari/537.36'}
-    r = requests.get(url, headers=headers)
-    print(r.text)
-    soup = BeautifulSoup(r.text, 'html5lib')
-    for artist in soup.find_all('a', attrs={'class': 'nm nm-icn f-thide s-fc0'}):
-        artist_name = artist.string
-        print("crawl name :"+artist_name)
-        artist_id = artist['href'].replace('/artist?id=', '').strip()
+    response = requests.get(url, headers=headers)
+    content = response.content.decode()
+    html = etree.HTML(content)
+    name = html.xpath("//a[@class='nm nm-icn f-thide s-fc0']/text()")
+    id = html.xpath("//a[@class='nm nm-icn f-thide s-fc0']/@href")
+
+    for artist_name,artist_id in zip(name,id):
+        artist_id = artist_id.split('=')[-1]
         try:
-            writer.writerow((artist_id, artist_name))
+            if artist_id is not None and artist_name is not None :
+                #print("crawl message: "+artist_name)
+                writer.writerow([artist_name,artist_id])
         except Exception as msg:
             print(msg)
 
 
+
 ls1 = [1001, 1002, 1003, 2001, 2002, 2003, 6001, 6002, 6003, 7001, 7002, 7003, 4001, 4002, 4003]    # id的值
 ls2 = [-1, 0, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90]    # initial的值
-csvfile = open('e:/www/music163-spiders/files/music_163_artists1.csv', 'a', encoding='utf-8')    # 文件存储的位置
+csvfile = open('e:/www/music163-spiders/source/music_163_artists.csv', 'a', encoding='utf-8',newline='')    # 文件存储的位置
 writer = csv.writer(csvfile)
 writer.writerow(('artist_id', 'artist_name'))
-# for i in ls1:
-#     for j in ls2:
-#         url = 'http://music.163.com/discover/artist/cat?id=' + str(i) + '&initial=' + str(j)
-#         get_artists(url)
-url = 'http://music.163.com/discover/artist/cat?id=1001&initial=65'
-get_artists(url)
+for i in ls1:
+    for j in ls2:
+        url = 'http://music.163.com/discover/artist/cat?id=' + str(i) + '&initial=' + str(j)
+        print('crawl page: '+url)
+        sleep(1)
+        get_artists(url)
